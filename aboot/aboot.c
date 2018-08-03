@@ -43,6 +43,31 @@ static uint32 get_run_address() {
 	return runaddr;
 }
 
+void clear_rom(uint32 pos) {
+	uint32 end = pos + ROM_SIZE;
+	ets_printf("Clear rom at position %x\n", pos);
+	for(;pos < end; pos += SECTOR_SIZE) {
+		if (SPIEraseSector(pos / SECTOR_SIZE) != 0) {
+			ets_printf("SPIEraseSector err at position %x sector %d\n", pos, pos / SECTOR_SIZE);
+			return;
+		}
+	}
+}
+
+void copy_rom() {
+	uint8 buffer[BUFFER_SIZE];
+	uint32 pos = 0;
+	uint32 end = ROM_SIZE;
+	for(; pos < end; pos += BUFFER_SIZE) {
+		ets_printf("Write at %d copy of %d\n", ROM_ADDR_1 + pos, ROM_ADDR_2 + pos);
+		if (SPIRead(ROM_ADDR_2 + pos, buffer, BUFFER_SIZE) != 0) {
+			ets_printf("read err %d\n", ROM_ADDR_2 + pos);
+			return;
+		}
+		SPIWrite(ROM_ADDR_1 + pos, buffer, BUFFER_SIZE);
+	}
+}
+
 uint32 NOINLINE find_image(void) {
 	uint32 runAddr;
 	uint8 rom_to_boot;
@@ -50,6 +75,9 @@ uint32 NOINLINE find_image(void) {
 	rom_to_boot = write_conf();
 	if (rom_to_boot > 0) {
 		ets_printf("We should copy the new Rom from %x to %x.\r\n", ROM_ADDR_2, ROM_ADDR_1);
+		clear_rom(ROM_ADDR_1);
+		copy_rom();
+		clear_rom(ROM_ADDR_2);
 	}
 
 	runAddr = get_run_address();
@@ -59,22 +87,6 @@ uint32 NOINLINE find_image(void) {
 
 	return runAddr;
 }
-
-#ifdef BOOT_NO_ASM
-
-// small stub method to ensure minimum stack space used
-void call_user_start(void) {
-	uint32 addr;
-	stage2a *loader;
-
-	addr = find_image();
-	if (addr != 0) {
-		loader = (stage2a*)entry_addr;
-		loader(addr);
-	}
-}
-
-#else
 
 // assembler stub uses no stack space
 // works with gcc
@@ -91,5 +103,3 @@ void call_user_start(void) {
 		"jx a3\n"                // now jump to it
 	);
 }
-
-#endif

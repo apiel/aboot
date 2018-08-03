@@ -10,6 +10,7 @@ extern "C" {
 #define BOOT_CONFIG_MAGIC 0xe1
 #define BOOT_CONFIG_VERSION 0x01
 #define SECTOR_SIZE 0x1000
+#define BUFFER_SIZE 0x100
 #define MAX_ROMS 2
 #define BOOT_CONFIG_SECTOR 1
 #define ROM_SIZE 0x55000 // 348160 bytes
