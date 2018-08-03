@@ -2,7 +2,7 @@
 #include "aboot-private.h"
 #include <aboot-hex2a.h>
 
-static uint8 write_conf(void) {
+static uint8 write_conf(uint8 set_rom_0) {
 	uint8 buffer[SECTOR_SIZE];
 	uint8 rom_to_boot;
 
@@ -19,7 +19,7 @@ static uint8 write_conf(void) {
 	romconf->count = MAX_ROMS;
 	romconf->roms[0] = ROM_ADDR_1;
 	romconf->roms[1] = ROM_ADDR_2;
-	romconf->current_rom = 0;
+	romconf->current_rom = set_rom_0 ? 0 : rom_to_boot;
 	SPIEraseSector(BOOT_CONFIG_SECTOR);
 	SPIWrite(BOOT_CONFIG_SECTOR * SECTOR_SIZE, buffer, SECTOR_SIZE);
 
@@ -47,8 +47,9 @@ void clear_rom(uint32 pos) {
 	uint32 end = pos + ROM_SIZE;
 	ets_printf("Clear rom at position %x\n", pos);
 	for(;pos < end; pos += SECTOR_SIZE) {
+		ets_printf("SPIEraseSector at position 0x%x sector %d\n", pos, pos / SECTOR_SIZE);
 		if (SPIEraseSector(pos / SECTOR_SIZE) != 0) {
-			ets_printf("SPIEraseSector err at position %x sector %d\n", pos, pos / SECTOR_SIZE);
+			ets_printf("SPIEraseSector err at position 0x%x sector %d\n", pos, pos / SECTOR_SIZE);
 			return;
 		}
 	}
@@ -72,11 +73,14 @@ uint32 NOINLINE find_image(void) {
 	uint32 runAddr;
 	uint8 rom_to_boot;
 
-	rom_to_boot = write_conf();
+	rom_to_boot = write_conf(NO); // Sometime it reboot before to finish the copy, so lets update the current_rom only when copy is finished
 	if (rom_to_boot > 0) {
-		ets_printf("We should copy the new Rom from %x to %x.\r\n", ROM_ADDR_2, ROM_ADDR_1);
+		ets_printf("We should copy the new Rom from 0x%x to 0x%x.\r\n", ROM_ADDR_2, ROM_ADDR_1);
 		clear_rom(ROM_ADDR_1);
 		copy_rom();
+		clear_rom(ROM_ADDR_2);
+		write_conf(YES);
+	} else {
 		clear_rom(ROM_ADDR_2);
 	}
 

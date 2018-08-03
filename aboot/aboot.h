@@ -16,6 +16,8 @@ extern "C" {
 #define ROM_SIZE 0x55000 // 348160 bytes
 #define ROM_ADDR_1 0x2000
 #define ROM_ADDR_2 ROM_SIZE + ROM_ADDR_1
+#define YES 1
+#define NO 0
 
 // For the moment I guess I must keep the same structure at rboot for esp-open-rtos
 // Let see later if this can change somehow
